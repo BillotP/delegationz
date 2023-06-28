@@ -1,0 +1,23 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model delegations {
+  id        BigInt   @id
+  timestamp DateTime
+  amount    BigInt
+  delegator String   @db.VarChar(36)
+  block     BigInt
+
+  @@index([delegator])
+  @@index([block])
+  @@index([timestamp])
+}

@@ -1,0 +1,5 @@
+node_modules
+# Keep environment variables out of version control -> yes sure !
+# .env
+# Match .prod.env .staging.env ...
+*.*.env
