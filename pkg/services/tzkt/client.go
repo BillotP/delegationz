@@ -9,14 +9,16 @@ import (
 var defaultLimit = 100
 
 type TzktClient struct {
-	cli     *http.Client
-	baseURL string
+	cli      *http.Client
+	baseURL  string
+	loglevel int
 }
 
 func NewTzktClient() *TzktClient {
 	return &TzktClient{
-		cli:     http.DefaultClient,
-		baseURL: "https://api.tzkt.io/v1",
+		cli:      http.DefaultClient,
+		loglevel: 1,
+		baseURL:  "https://api.tzkt.io/v1",
 	}
 }
 

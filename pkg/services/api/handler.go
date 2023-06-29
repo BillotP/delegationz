@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"delegationz/pkg/models"
 	"delegationz/pkg/repository"
 	"delegationz/pkg/services/tzkt"
 	"fmt"
@@ -43,16 +42,16 @@ func QuickDelegationsHandler(tzktClient *tzkt.TzktClient) echo.HandlerFunc {
 			log.Printf("[ERROR] Failed to get /delegations: %+v", err)
 			return c.JSON(ErrSomethingBad.Code, ErrSomethingBad)
 		}
-		var out = []models.DelegationItem{}
+		var out = []DelegationItem{}
 		for _, el := range dd.Items {
 			if el == nil {
 				continue
 			}
-			out = append(out, *models.NewDelegationItemFromApi(el))
+			out = append(out, *NewDelegationItemFromApi(el))
 		}
 		// Most recent first
-		sort.Sort(models.ByTimestamp(out))
-		return c.JSON(http.StatusOK, models.DelegationsResponse{Data: out})
+		sort.Sort(ByTimestamp(out))
+		return c.JSON(http.StatusOK, DelegationsResponse{Data: out})
 	}
 }
 
@@ -85,18 +84,18 @@ func DelegationsHandler(db *sql.DB) echo.HandlerFunc {
 		}
 		// Note : Serializiation should be done database side and result stored
 		// in cache to avoid the below operation.
-		var out = []models.DelegationItem{}
+		var out = []DelegationItem{}
 		for _, el := range dd {
 			if el == nil {
 				continue
 			}
-			out = append(out, models.DelegationItem{
+			out = append(out, DelegationItem{
 				Timestamp: el.Timestamp,
 				Amount:    fmt.Sprintf("%d", el.Amount),
 				Delegator: el.Delegator,
 				Block:     fmt.Sprintf("%d", el.BlockLevel),
 			})
 		}
-		return c.JSON(http.StatusOK, models.DelegationsResponse{Data: out})
+		return c.JSON(http.StatusOK, DelegationsResponse{Data: out})
 	}
 }

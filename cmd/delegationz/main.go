@@ -1,6 +1,7 @@
 package main
 
 import (
+	"delegationz/pkg/services/api"
 	"delegationz/pkg/services/db"
 	"delegationz/pkg/services/importer"
 )
@@ -8,6 +9,7 @@ import (
 var dbURL = "postgres://postgres:supersecret@localhost:5432/dev"
 
 func main() {
-	dbclient := db.Get(dbURL)
-	importer.Run(dbclient, 800)
+	dbClient := db.Get(dbURL)
+	go api.Serve("8080", dbClient)
+	importer.Run(dbClient, 800)
 }

@@ -43,7 +43,9 @@ func (c *TzktClient) Delegations(filters *Filters, page *Pagination) (*Delegatio
 		}
 	}
 	endpoint += "?" + queryParams.Encode()
-	log.Printf("[DEBUG] Will GET %s", endpoint)
+	if c.loglevel > 1 {
+		log.Printf("[DEBUG] Will GET %s", endpoint)
+	}
 	err := c.do(http.MethodGet, endpoint, &delegations)
 	if err != nil {
 		return nil, err
@@ -52,6 +54,8 @@ func (c *TzktClient) Delegations(filters *Filters, page *Pagination) (*Delegatio
 		delegations,
 		len(delegations) == defaultLimit,
 	}
-	log.Printf("[DEBUG] GOT %+v\n", res)
+	if c.loglevel > 2 {
+		log.Printf("[DEBUG] GOT %+v\n", res)
+	}
 	return res, nil
 }

@@ -1,4 +1,4 @@
-package models
+package api
 
 import (
 	"delegationz/pkg/services/tzkt"
