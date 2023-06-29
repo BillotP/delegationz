@@ -7,6 +7,7 @@
 ## [api.tzkt.io/v1/operations/delegations](https://api.tzkt.io/#operation/Operations_GetDelegations) 
 ##  endpoint.
 ###
+mkdir out
 ## Max results in page
 limit=600
 ## Page number
