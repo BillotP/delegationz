@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Lorem Ipsum Dolor Sic Amet ..
+A Golang service to fetch delegations events from [TZkt.io](https://api.tzkt.io/#operation/Operations_GetDelegations) api, save and present them.
 
 ### Specifications
 
@@ -18,27 +18,22 @@ As per the specifications above, we will need at least three distinct parts :
 - [Watcher](cmd/watcher/main.go) \* :
   A "realtime" or "cron like" job to keep a synchronized state with the reference [tzkt.io](https://api.tzkt.io) api.
 
-- [Api](cmd/api/main.go) :
+- [Api](cmd/api/main.go) \*:
   A "RESTish" API to expose gathered data.
 
-**\*** Those parts could be combined in a "start sync job if realtime is not up to date or no data in store" binary.
+**\*** The whole parts could either be combined in one binary or built and deployed separately according to requirements.
 
 ### Implementation
 
-Langage and design : 
+Data fetching :
 
-Go is the lang because of clarity, consistency and coolest mascot.
+To first fetch reference api data's, the need to develop an isolated, tested and reusable tzkt api client wrapper comes pretty quickly\* (regarding the requirements only [Delegations](pkg/services/tzkt/delegations.go) is actually implemented).
 
-To first fetch reference api data's, the need to develop an isolated, tested and reusable tzkt api client wrapper comes pretty quickly* (regarding the requirements only [Delegations](pkg/services/tzkt/delegations.go) is actually implemented).
+\* As of 28/06/28 [DipDup Go SDK](https://github.com/dipdup-io/go-lib) open source project with the same goals seems to be a promising start but currently not used in this project.
 
-
-\* As of 28/06/28 [DipDup Go SDK](https://github.com/dipdup-io/go-lib) seems to be a promising start but currently not used in this project.
-
-Persistence and communication : 
+Persistence and communication :
 
 The three parts detailed above should be able to communicate together or at least referring themselves to a single source of truth. In a will to be "simple", this implementation is using Postgres to store and retrieve delegations datas. For realtime need or added observability, a "pubsub style" messaging queue could be later introduced for example to share sync progress or to receive filtered notifications for a particular "baker" or else...
-
-
 
 ### Limits
 
@@ -48,14 +43,13 @@ The three parts detailed above should be able to communicate together or at leas
 
 ## Setup
 
-**Tldr**: With your favorite (UN*X) distribution on hand, fire up your shell and run according to your package manager :
+**Tldr**: With your favorite (UN\*X) distribution on hand, fire up your shell and run according to your package manager :
+
 ```bash
-yay -S go nvm jq bash docker
+apt-get install golang nvm jq docker
 nvm install 20
 nvm use 20
-docker run --env POSTGRES_PASSWORD=supersecret --env POSTGRES_DB=dev -d --rm -p 5432:5432 docker.io/postgres:alpine
-# Check docker logs , once pg startup is done you should be able to psql "postgres://postgres:supersecret@127.0.0.1:5432/dev" your way in
-cd migrations && npm i && npx run prisma migrate deploy
+make testdb DOCKER=docker
 go mod download
 go run cmd/api/main.go &
 curl "http://localhost:8080/xtz/delegations" | jq
@@ -68,12 +62,15 @@ Install and setup a modern (>=1.20) golang env
 
 #### Sqlboiler
 
+To fetch delegations datas stored in postgres sql without having to worry about golang models drifting or incompactibility with the database scheme, runnning `make gen` will let sqlboiler tool introspect the running database scheme and generate a repository / orm* style object to use on api resolvers. To use it run :
+
 ```
-go install github.com/volatiletech/sqlboiler/v4@latest 
+go install github.com/volatiletech/sqlboiler/v4@latest
 go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-psql@latest
 export PATH=$PATH:/$HOME/go/bin
 ```
 
+\* Of course, such an orm is only used for the "READ" database operations, the data import processes use "custom" sql queries to avoid too much overhead and optimise the sensible "WRITE" operations.
 
 ### Node , Npm , Npx ...
 
@@ -81,7 +78,7 @@ Install [nvm](https://github.com/nvm-sh/nvm) and use latest nodejs version
 
 ### Docker
 
-To help during the development, a postgres db is used, install docker or podman and use 
+To help during the development, a postgres db is used, install docker or podman and use
 
 ```
 make testdb
@@ -91,7 +88,14 @@ to test the success of your installation.
 
 ## Development
 
-Lorem Ipsum
+### Database scheme and migrations
+
+In order to ease, control and track the database scheme(s) definitions, the [prisma](https://www.prisma.io/docs/getting-started/quickstart) tool is used. To udpate the db scheme, update [schema.prisma](./migrations/prisma/schema.prisma) and create a new mutation with
+`cd migrations && npx --yes prisma@latest migrate dev`.
+
+### Unit Testing
+
+To illustrate a robust and maintenable project setup, some unit tests have been written for tzkt client and automatically generated for the database repository. Run them with `make test`
 
 ### Git
 
@@ -120,13 +124,12 @@ feat(api): pagination filters for /tzc/delegations endpoint
 
 Regarding the deployment strategy, it should be carefully planned based on required business and engineering requirements such as availability, latency , usage volume / related costs, existing pipelines and infrastucture ...
 
-As far as this project is limited by human and financials means, this repository project is **not**
-actually deployed somewhere, sorry about that.
+This repository project is **not** actually deployed somewhere, sorry about that.
 
 ## Misc
 
-During the [importer](cmd/importer/main.go) development, a strange reference api behavior appear, reproduction and developement is summarised in [tzkt_pagination_test.sh](utils/scripts/tzkt_pagination_test.sh) script.
+- During the [importer](cmd/importer/main.go) development, a strange reference api behavior appear, reproduction and developement is summarised in [tzkt_pagination_test.sh](utils/scripts/tzkt_pagination_test.sh) script.
 
-[Makefile](Makefile) usage and pagination test script run : 
+- In the specifications requirement , the `block` field asked for the api response to looks like a stringified bigint (as the block level) (`"block": "2338084"`) but the reference api is returning the hash like : `"block": "BLwRUPupdhP8TyWp9J6TbjLSCxPPW6tyhVPF2KmNAbLPt7thjPw",` . Current implementation will return the `level` as the `block` response field. It could been suggested that each api features a more descriptive name for their fields as `block_level` or `block_hash`.
 
-[![asciicast](https://asciinema.org/a/9xHrFGtIHTFUAV7lWeUkolxyd.svg)](https://asciinema.org/a/9xHrFGtIHTFUAV7lWeUkolxyd)
+- In the specifiction requirements, the `delegator` field has been mapped from `"newDelegate": { "address":"..."}` with no confidence in the fact that `newDelegate` is the asked `delegator`.
