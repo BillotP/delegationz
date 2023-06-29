@@ -110,7 +110,7 @@ redis: ## Launch a local redis store
 
 
 gen: ## Generate a fully typed golang orm from postgres db introspection cf pkg/_generate.go
-	@go generate ./...
+	@sqlboiler psql -c utils/config/sqlboiler.toml -o "pkg/repository"
 
 # updatesecrets: ## Update dotenv secrets files
 # 	@for f in secrets/**/*.yaml ; do \
