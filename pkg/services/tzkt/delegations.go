@@ -31,10 +31,13 @@ func (c *TzktClient) Delegations(filters *Filters, page *Pagination) (*Delegatio
 		for i := 0; i < paginationValue.NumField(); i++ {
 			field := paginationValue.Field(i)
 			if field.String() != "" {
-				vv := fmt.Sprintf("%d", field.Int())
-				queryParams.Set(paginationParams[paginationType.Field(i).Name], vv)
-				if paginationType.Field(i).Name == "Limit" {
-					defaultLimit = int(field.Int())
+				v := field.Int()
+				if v > 0 {
+					vv := fmt.Sprintf("%d", field.Int())
+					queryParams.Set(paginationParams[paginationType.Field(i).Name], vv)
+					if paginationType.Field(i).Name == "Limit" {
+						defaultLimit = int(v)
+					}
 				}
 			}
 		}

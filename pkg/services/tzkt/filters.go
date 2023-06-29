@@ -39,13 +39,20 @@ func (f *Filters) SetFilter(key, value string) {
 }
 
 type Pagination struct {
-	Limit  int
-	Offset int
+	Limit int
+	// Elements offset mode Skips specified number of elements.
+	OffsetEl int
+	// Page offset mode Skips page * limit elements. This is a classic pagination...
+	OffsetPg int
+	// Cursor offset mode. Skips all elements with the cursor before (including) the specified value.
+	OffsetCr int
 }
 
 var paginationParams = map[string]string{
-	"Limit":  "limit",
-	"Offset": "offset",
+	"Limit":    "limit",
+	"OffsetEl": "offset.el",
+	"OffsetPg": "offset.pg",
+	"OffsetCr": "offset.cr",
 }
 
 func (p *Pagination) SetPagination(key, value string) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"delegationz/pkg/db"
 	"delegationz/pkg/services/tzkt"
 	"log"
@@ -10,6 +11,15 @@ import (
 )
 
 var dbURL = "postgres://postgres:supersecret@localhost:5432/dev"
+
+func getLastID() *int64 {
+	var lID int64
+	err := db.Get(dbURL).QueryRow(`select MAX(id) from delegations`).Scan(&lID)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	return &lID
+}
 
 func main() {
 	// Create a WaitGroup to wait for all goroutines to finish
@@ -31,13 +41,15 @@ func main() {
 	}
 
 	// Fetch the paginated items concurrently
-	pageSize := 600
+	pageSize := 10
+	flters := tzkt.Filters{}
 	pagination := tzkt.Pagination{
-		Limit:  pageSize,
-		Offset: 0,
+		Limit: pageSize,
 	}
-	flters := tzkt.Filters{
-		TypeEq: "applied",
+	// Fetch the last saved id
+	if lastID := getLastID(); lastID != nil {
+		v := *lastID
+		pagination.OffsetCr = int(v)
 	}
 	for i := 0; i < numGoroutines; i++ {
 		resp, err := cli.Delegations(&flters, &pagination)
@@ -50,11 +62,10 @@ func main() {
 		delegationChannel <- resp
 
 		// Check if there are more pages
-		if !resp.HasMore {
+		if !resp.HasMore || resp.Items == nil {
 			break
 		}
-
-		pagination.Offset++
+		pagination.OffsetCr = int(resp.Items[len(resp.Items)-1].ID)
 	}
 	// Close the delegation channel to indicate that no more delegations will be sent
 	close(delegationChannel)
