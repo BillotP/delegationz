@@ -13,7 +13,7 @@ type Filters struct {
 	TimestampLt string
 	// Less or equal filter mode
 	TimestampLe string
-	// Operation type
+	// Filters items by operation status (applied, failed, backtracked, skipped).
 	TypeEq string
 	// Sort results desc
 	SortDesc string
