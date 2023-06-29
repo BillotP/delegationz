@@ -6,7 +6,10 @@ import (
 	"delegationz/pkg/db"
 	"delegationz/pkg/services/tzkt"
 	"log"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -31,17 +34,24 @@ func main() {
 	// Create a channel to communicate delegation objects between goroutines
 	delegationChannel := make(chan *tzkt.DelegationItems)
 
+	// Create a context that can be cancelled on stop signal
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Set up the Ctrl+C handler to gracefully stop the program
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
 	// Set the number of goroutines to use
-	numGoroutines := 5
+	numGoroutines := 30
 
 	// Launch goroutines to fetch and save delegations
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
-		go saveDelegations(delegationChannel, &wg)
+		go saveDelegations(ctx, delegationChannel, &wg)
 	}
 
 	// Fetch the paginated items concurrently
-	pageSize := 10
+	pageSize := 800
 	flters := tzkt.Filters{}
 	pagination := tzkt.Pagination{
 		Limit: pageSize,
@@ -51,7 +61,8 @@ func main() {
 		v := *lastID
 		pagination.OffsetCr = int(v)
 	}
-	for i := 0; i < numGoroutines; i++ {
+fetchLoop:
+	for {
 		resp, err := cli.Delegations(&flters, &pagination)
 		if err != nil {
 			log.Printf("[ERROR] error making API request:%v\n", err)
@@ -63,9 +74,18 @@ func main() {
 
 		// Check if there are more pages
 		if !resp.HasMore || resp.Items == nil {
-			break
+			break fetchLoop
 		}
 		pagination.OffsetCr = int(resp.Items[len(resp.Items)-1].ID)
+		// Check if the program should stop
+		select {
+		case <-stop:
+			log.Println("Received stop signal. Stopping...")
+			cancel() // Cancel the context to signal goroutines to stop
+			break fetchLoop
+		default:
+			// Continue fetching
+		}
 	}
 	// Close the delegation channel to indicate that no more delegations will be sent
 	close(delegationChannel)
@@ -75,42 +95,54 @@ func main() {
 
 }
 
-func saveDelegations(delegationChannel <-chan *tzkt.DelegationItems, wg *sync.WaitGroup) {
+func saveDelegations(ctx context.Context, delegationChannel <-chan *tzkt.DelegationItems, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for delegation := range delegationChannel {
-		// Perform the logic to save the delegation to the database or perform any other operations
-		// For simplicity, we will just print the delegation here
-		ctx := context.Background()
-		log.Printf("[DEBUG] Will save %v delegation\n", len(delegation.Items))
-		if len(delegation.Items) == 0 {
-			continue
-		}
-
-		ids := make([]int64, len(delegation.Items))
-		timestamps := make([]time.Time, len(delegation.Items))
-		amounts := make([]int64, len(delegation.Items))
-		delegators := make([]string, len(delegation.Items))
-		blocks := make([]string, len(delegation.Items))
-
-		for i, row := range delegation.Items {
-			ids[i] = row.ID
-			timestamps[i] = row.Timestamp
-			amounts[i] = row.Amount
-			delegators[i] = row.NewDelegate.Address
-			blocks[i] = row.Block
-		}
-		rr, err := db.Get(dbURL).ExecContext(ctx, `
-		INSERT INTO delegations
-		(id, timestamp, amount, delegator, block)
-		(SELECT  * FROM UNNEST($1::bigint[], $2::timestamp[], $3::bigint[], $4::varchar[], $5::text[]))
-		ON CONFLICT (id) DO UPDATE SET delegator = EXCLUDED.delegator
-		`, ids, timestamps, amounts, delegators, blocks)
-		if err != nil {
-			log.Printf("[ERROR] Failed to save : %s\n", err)
+	for {
+		select {
+		case <-ctx.Done():
+			// Context cancelled, stop processing delegations
 			return
+		case delegation, ok := <-delegationChannel:
+			if !ok {
+				// Channel closed, no more delegations to process
+				return
+			}
+			// Perform the logic to save the delegation to the database or perform any other operations
+			// For simplicity, we will just print the delegation here
+			ctx := context.Background()
+			log.Printf("[DEBUG] Will save %v delegation\n", len(delegation.Items))
+			if len(delegation.Items) == 0 {
+				continue
+			}
+
+			ids := make([]int64, len(delegation.Items))
+			timestamps := make([]time.Time, len(delegation.Items))
+			amounts := make([]int64, len(delegation.Items))
+			delegators := make([]string, len(delegation.Items))
+			block_hashes := make([]string, len(delegation.Items))
+			block_heights := make([]int, len(delegation.Items))
+
+			for i, row := range delegation.Items {
+				ids[i] = row.ID
+				timestamps[i] = row.Timestamp
+				amounts[i] = row.Amount
+				delegators[i] = row.NewDelegate.Address
+				block_hashes[i] = row.Block
+				block_heights[i] = row.Level
+			}
+			rr, err := db.Get(dbURL).ExecContext(ctx, `
+			INSERT INTO delegations
+			(id, timestamp, amount, delegator, block_hash, block_level)
+			(SELECT  * FROM UNNEST($1::bigint[], $2::timestamp[], $3::bigint[], $4::varchar[], $5::text[], $6::bigint[]))
+			ON CONFLICT (id) DO UPDATE SET delegator = EXCLUDED.delegator
+			`, ids, timestamps, amounts, delegators, block_hashes, block_heights)
+			if err != nil {
+				log.Printf("[ERROR] Failed to save : %s\n", err)
+				return
+			}
+			cnt, _ := rr.RowsAffected()
+			log.Printf("[INFO] %d delegations saved", cnt)
 		}
-		cnt, _ := rr.RowsAffected()
-		log.Printf("[INFO] %d delegations saved", cnt)
 	}
 }
