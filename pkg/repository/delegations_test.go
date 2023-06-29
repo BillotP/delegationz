@@ -568,7 +568,7 @@ func testDelegationsSelect(t *testing.T) {
 }
 
 var (
-	delegationDBTypes = map[string]string{`ID`: `bigint`, `Timestamp`: `timestamp without time zone`, `Amount`: `bigint`, `Delegator`: `character varying`, `Block`: `bigint`}
+	delegationDBTypes = map[string]string{`ID`: `bigint`, `Timestamp`: `timestamp without time zone`, `Amount`: `bigint`, `Delegator`: `character varying`, `BlockHash`: `text`, `BlockLevel`: `bigint`}
 	_                 = bytes.MinRead
 )
 

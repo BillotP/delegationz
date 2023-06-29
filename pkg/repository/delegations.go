@@ -23,42 +23,47 @@ import (
 
 // Delegation is an object representing the database table.
 type Delegation struct {
-	ID        int64     `boil:"id" json:"id" toml:"id" yaml:"id"`
-	Timestamp time.Time `boil:"timestamp" json:"timestamp" toml:"timestamp" yaml:"timestamp"`
-	Amount    int64     `boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	Delegator string    `boil:"delegator" json:"delegator" toml:"delegator" yaml:"delegator"`
-	Block     int64     `boil:"block" json:"block" toml:"block" yaml:"block"`
+	ID         int64     `boil:"id" json:"id" toml:"id" yaml:"id"`
+	Timestamp  time.Time `boil:"timestamp" json:"timestamp" toml:"timestamp" yaml:"timestamp"`
+	Amount     int64     `boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
+	Delegator  string    `boil:"delegator" json:"delegator" toml:"delegator" yaml:"delegator"`
+	BlockHash  string    `boil:"block_hash" json:"block_hash" toml:"block_hash" yaml:"block_hash"`
+	BlockLevel int64     `boil:"block_level" json:"block_level" toml:"block_level" yaml:"block_level"`
 
 	R *delegationR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L delegationL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var DelegationColumns = struct {
-	ID        string
-	Timestamp string
-	Amount    string
-	Delegator string
-	Block     string
+	ID         string
+	Timestamp  string
+	Amount     string
+	Delegator  string
+	BlockHash  string
+	BlockLevel string
 }{
-	ID:        "id",
-	Timestamp: "timestamp",
-	Amount:    "amount",
-	Delegator: "delegator",
-	Block:     "block",
+	ID:         "id",
+	Timestamp:  "timestamp",
+	Amount:     "amount",
+	Delegator:  "delegator",
+	BlockHash:  "block_hash",
+	BlockLevel: "block_level",
 }
 
 var DelegationTableColumns = struct {
-	ID        string
-	Timestamp string
-	Amount    string
-	Delegator string
-	Block     string
+	ID         string
+	Timestamp  string
+	Amount     string
+	Delegator  string
+	BlockHash  string
+	BlockLevel string
 }{
-	ID:        "delegations.id",
-	Timestamp: "delegations.timestamp",
-	Amount:    "delegations.amount",
-	Delegator: "delegations.delegator",
-	Block:     "delegations.block",
+	ID:         "delegations.id",
+	Timestamp:  "delegations.timestamp",
+	Amount:     "delegations.amount",
+	Delegator:  "delegations.delegator",
+	BlockHash:  "delegations.block_hash",
+	BlockLevel: "delegations.block_level",
 }
 
 // Generated where
@@ -131,17 +136,19 @@ func (w whereHelperstring) NIN(slice []string) qm.QueryMod {
 }
 
 var DelegationWhere = struct {
-	ID        whereHelperint64
-	Timestamp whereHelpertime_Time
-	Amount    whereHelperint64
-	Delegator whereHelperstring
-	Block     whereHelperint64
+	ID         whereHelperint64
+	Timestamp  whereHelpertime_Time
+	Amount     whereHelperint64
+	Delegator  whereHelperstring
+	BlockHash  whereHelperstring
+	BlockLevel whereHelperint64
 }{
-	ID:        whereHelperint64{field: "\"delegations\".\"id\""},
-	Timestamp: whereHelpertime_Time{field: "\"delegations\".\"timestamp\""},
-	Amount:    whereHelperint64{field: "\"delegations\".\"amount\""},
-	Delegator: whereHelperstring{field: "\"delegations\".\"delegator\""},
-	Block:     whereHelperint64{field: "\"delegations\".\"block\""},
+	ID:         whereHelperint64{field: "\"delegations\".\"id\""},
+	Timestamp:  whereHelpertime_Time{field: "\"delegations\".\"timestamp\""},
+	Amount:     whereHelperint64{field: "\"delegations\".\"amount\""},
+	Delegator:  whereHelperstring{field: "\"delegations\".\"delegator\""},
+	BlockHash:  whereHelperstring{field: "\"delegations\".\"block_hash\""},
+	BlockLevel: whereHelperint64{field: "\"delegations\".\"block_level\""},
 }
 
 // DelegationRels is where relationship names are stored.
@@ -161,8 +168,8 @@ func (*delegationR) NewStruct() *delegationR {
 type delegationL struct{}
 
 var (
-	delegationAllColumns            = []string{"id", "timestamp", "amount", "delegator", "block"}
-	delegationColumnsWithoutDefault = []string{"id", "timestamp", "amount", "delegator", "block"}
+	delegationAllColumns            = []string{"id", "timestamp", "amount", "delegator", "block_hash", "block_level"}
+	delegationColumnsWithoutDefault = []string{"id", "timestamp", "amount", "delegator", "block_hash", "block_level"}
 	delegationColumnsWithDefault    = []string{}
 	delegationPrimaryKeyColumns     = []string{"id"}
 	delegationGeneratedColumns      = []string{}
