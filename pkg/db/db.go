@@ -28,6 +28,8 @@ func Get(dbURL string) *sql.DB {
 	if err = db.Ping(); err != nil {
 		log.Fatal("Error checking database connection:", err)
 	}
+	log.Printf("[INFO] Connected to db %s @ %s",
+		connConfig.ConnConfig.Database, connConfig.ConnConfig.Host)
 	inst = db
 	return inst
 }
