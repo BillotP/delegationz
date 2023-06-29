@@ -15,7 +15,7 @@ model delegations {
   timestamp DateTime
   amount    BigInt
   delegator String   @db.VarChar(36)
-  block     BigInt
+  block     String
 
   @@index([delegator])
   @@index([block])

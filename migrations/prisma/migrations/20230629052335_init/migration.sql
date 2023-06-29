@@ -4,7 +4,7 @@ CREATE TABLE "delegations" (
     "timestamp" TIMESTAMP(3) NOT NULL,
     "amount" BIGINT NOT NULL,
     "delegator" VARCHAR(36) NOT NULL,
-    "block" BIGINT NOT NULL,
+    "block" TEXT NOT NULL,
 
     CONSTRAINT "delegations_pkey" PRIMARY KEY ("id")
 );
