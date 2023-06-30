@@ -1,4 +1,4 @@
-output   = "repository"
+output   = "pkg/repository"
 pkgname = "repository"
 wipe     = true
 no-tests = false

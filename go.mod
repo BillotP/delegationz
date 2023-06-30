@@ -3,18 +3,21 @@ module delegationz
 go 1.20
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/friendsofgo/errors v0.9.2
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/kat-co/vala v0.0.0-20170210184112-42e1d8b61f12
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.9
 	github.com/spf13/viper v1.16.0
+	github.com/stretchr/testify v1.8.3
 	github.com/volatiletech/randomize v0.0.1
 	github.com/volatiletech/sqlboiler/v4 v4.14.2
 	github.com/volatiletech/strmangle v0.0.4
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -33,6 +36,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

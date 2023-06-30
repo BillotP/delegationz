@@ -5,7 +5,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func TestNewTzktClient(t *testing.T) {
+	// Call the function
+	client := NewTzktClient()
+
+	// Assert the client struct fields
+	assert.NotNil(t, client.cli)
+	assert.Equal(t, 1, client.loglevel)
+	assert.Equal(t, "https://api.tzkt.io/v1", client.baseURL)
+	assert.IsType(t, &http.Client{}, client.cli)
+}
 
 func TestDo(t *testing.T) {
 	// Create a test server to mock the HTTP requests
@@ -49,7 +62,7 @@ func TestDelegations(t *testing.T) {
 		}
 
 		// Check the query parameters
-		expectedQuery := "limit=10&offset=0&timestamp.gt=2022-01-01&timestamp.lt=2022-12-31"
+		expectedQuery := "limit=10&timestamp.gt=2022-01-01&timestamp.lt=2022-12-31"
 		if r.URL.RawQuery != expectedQuery {
 			t.Errorf("expected query parameters %s, got %s", expectedQuery, r.URL.RawQuery)
 		}

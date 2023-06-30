@@ -79,7 +79,7 @@ push: ## Push a previously built CMD container image
 	$(DOCKER) push "$$imageName:$$version"
 
 gen: ## Generate a fully typed golang orm from postgres db introspection cf pkg/_generate.go
-	@sqlboiler psql -c utils/config/sqlboiler.toml -o "pkg/repository"
+	@sqlboiler psql -c sqlboiler.toml -o "pkg/repository"
 
 clean: ## Stop background cmd(s) and cleaning binary and temporary files 
 	@rm -rf bin || true

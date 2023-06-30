@@ -1,4 +1,5 @@
-# DelegationZ - Get latest and historical delegations events on Tezos Chain
+# [DelegationZ](https://delegationz.fly.dev/) - Get latest and historical delegations events on Tezos Chain
+[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://forthebadge.com) 
 
 ## Introduction
 
@@ -41,6 +42,8 @@ The three parts detailed above should be able to communicate together or at leas
 - Relation with the data provider could go wrong and lead to corrupted or no datas.
 - Maybe delegation events could be acquired from a node [rpc source](https://tezos.gitlab.io/active/rpc.html) directly ?
 
+- This implementation lacks a proper caching strategy, a request rate limit had been put in place to avoid database load but it's far from being sufficient if usage increase.
+
 ## Setup
 
 **Tldr**: With your favorite (UN\*X) distribution on hand, fire up your shell and run according to your package manager :
@@ -62,7 +65,7 @@ Install and setup a modern (>=1.20) golang env
 
 #### Sqlboiler
 
-To fetch delegations datas stored in postgres sql without having to worry about golang models drifting or incompactibility with the database scheme, runnning `make gen` will let sqlboiler tool introspect the running database scheme and generate a repository / orm* style object to use on api resolvers. To use it run :
+To fetch delegations datas stored in postgres sql without having to worry about golang models drifting or incompactibility with the database scheme, runnning `make gen` will let sqlboiler tool introspect the running database scheme and generate a repository / orm\* style object to use on api resolvers. To use it run :
 
 ```
 go install github.com/volatiletech/sqlboiler/v4@latest
@@ -124,12 +127,14 @@ feat(api): pagination filters for /tzc/delegations endpoint
 
 Regarding the deployment strategy, it should be carefully planned based on required business and engineering requirements such as availability, latency , usage volume / related costs, existing pipelines and infrastucture ...
 
-This repository project is **not** actually deployed somewhere, sorry about that.
+~~This repository project is **not** actually deployed somewhere, sorry about that.~~ 
+**UPDATE** : It is ! 🚀🚀🚀🚀
 
 ## Misc
 
-- During the [importer](cmd/importer/main.go) development, a strange reference api behavior appear, reproduction and developement is summarised in [tzkt_pagination_test.sh](utils/scripts/tzkt_pagination_test.sh) script.
-
+- ~~During the [importer](cmd/importer/main.go) development, a strange reference api behavior appear, reproduction and developement is summarised in [tzkt_pagination_test.sh](utils/scripts/tzkt_pagination_test.sh) script.~~ (Tss .. those developers who can't read a documentation ...)
 - In the specifications requirement , the `block` field asked for the api response to looks like a stringified bigint (as the block level) (`"block": "2338084"`) but the reference api is returning the hash like : `"block": "BLwRUPupdhP8TyWp9J6TbjLSCxPPW6tyhVPF2KmNAbLPt7thjPw",` . Current implementation will return the `level` as the `block` response field. It could been suggested that each api features a more descriptive name for their fields as `block_level` or `block_hash`.
 
 - In the specifiction requirements, the `delegator` field has been mapped from `"newDelegate": { "address":"..."}` with no confidence in the fact that `newDelegate` is the asked `delegator`.
+
+- Regarding the delegator field, it could sometimes be empty .. 🤷
