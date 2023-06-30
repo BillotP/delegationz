@@ -9,11 +9,12 @@ DOCKER			?= docker
 STAGE        	?= dev
 SED					?= sed
 LOGS			?= logs
+CMD				?= delegationz
 BUILD           := $(shell git rev-parse --short HEAD)
 APP_NAME        := $(shell head -n 1 README.md | cut -d ' ' -f2 |  tr '[:upper:]' '[:lower:]')
 
 DB_URL        ?= "postgres://postgres:supersecret@localhost:5432/dev"
-REGISTRY_DEV	:= "ghcr.io/BillotP/delegationz"
+REGISTRY_DEV	:= "ghcr.io/billotp/delegationz"
 
 help: ## Print this help message and exit
 	@echo -e "\n\t\t$(APP_NAME)-$(BUILD) \033[1mmake\033[0m options:\n"
@@ -59,68 +60,26 @@ redis: ## Launch a local redis store
 	@$(DOCKER) run -d --name local-redis -p 6379:6379 docker.io/redis:alpine
 	@echo "[INFO] Local redis instance listening on 'redis://localhost:6379'"
 
-# build: ## Build a CMD container image
-# 	@export chartFname="deployments/charts/$(CMD)/Chart.yaml" && \
-# 	export valueFname="deployments/charts/$(CMD)/values.yaml" && \
-# 	export version=$$(sed -n 's/^appVersion:[[:space:]]*//p' "$$chartFname" | tr -d '"') && \
-# 	export build=$$(git rev-parse --short HEAD) && \
-# 	export registry=$(shell if [ $(STAGE) == "preprod" ]; then echo $(REGISTRY_PREPROD); else echo $(REGISTRY_DEV);fi) && \
-# 	export imageName="$$registry/$(CMD)" && \
-# 	export dockerTemplate=$$(cat $$valueFname | grep dockerTemplate: | grep -oP 'dockerTemplate: "\K[^"]+') && \
-# 	export dockerfile=deployments/dockerfiles/$$dockerTemplate.dockerfile && \
-# 	echo "$$chartFname version: $$version" && \
-# 	$(DOCKER) build -t "$$imageName:$$version" \
-# 	--build-arg cmd=$(CMD) \
-# 	--build-arg version=$$version-$(BUILD) \
-# 	-f $$dockerfile .
+build: ## Build a CMD container image
+	@export version=$$(git rev-parse --short HEAD) && \
+	export registry=$(REGISTRY_DEV) && \
+	export imageName="$$registry/$(CMD)" && \
+	export dockerfile=$(shell if [ $(CMD) == "delegationz" ]; then echo "utils/dockerfiles/delegationz.dockerfile"; else echo "utils/dockerfiles/light.dockerfile";fi) && \
+	echo "$$dockerfile" && \
+	$(DOCKER) build -t "$$imageName:$$version" \
+	--build-arg version=$$version \
+	--build-arg cmd=$(CMD) \
+	-f $$dockerfile .
 
-# push: ## Push a previously built CMD container image
-# 	@export chartFname="deployments/charts/$(CMD)/Chart.yaml" && \
-# 	export version=$$(sed -n 's/^appVersion:[[:space:]]*//p' "$$chartFname" | tr -d '"') && \
-# 	export registry=$(shell if [ $(STAGE) == "preprod" ]; then echo $(REGISTRY_PREPROD); else echo $(REGISTRY_DEV);fi) && \
-# 	export imageName="$$registry/$(CMD)" && \
-# 	echo "Will push $$imageName:$$version" && \
-# 	$(DOCKER) push "$$imageName:$$version"
-
-# all: ## Build and push all CMDs container images
-# 	@for d in cmd/**/* ; \
-# 	do ! [[ $$d == *"__utils"* ]] && make build CMD=$${d#cmd/} || true ; \
-# 	done
-# 	@for d in cmd/**/* ; \
-# 	do ! [[ $$d == *"__utils"* ]] && make push CMD=$${d#cmd/} || true ; \
-# 	done
-
-# bump_all: ## Increment all charts version to eg trigger a build / deploy in CI...
-# 	@for f in deployments/charts/**/**/Chart.yaml; do  [[ $$f == *"utils"* ]] && continue ; echo "Processing $$f file..." && \
-# 	 VERSION=$$(grep appVersion $$f | sed 's/appVersion[: "]*//' | sed 's/"//') && \
-# 	 NVERSION=$$(./tools/increment_version.sh -p $$VERSION) \
-# 	 app=$$(echo $$f | sed 's|deployments/charts/||g' | sed 's|/Chart.yaml||g') \
-# 	 && \
-# 	 echo "🩹 New patch from $$VERSION to $$NVERSION for $$app" && \
-# 	 sed -i "s/$$VERSION/$$NVERSION/"  $$f; done
-
-# bump: ## Increment CMD charts version to eg trigger a build / deploy in CI...
-# 	@for f in deployments/charts/$(CMD)/**/Chart.yaml; do  echo "Processing $$f file..." && \
-# 	 VERSION=$$(grep appVersion $$f | sed 's/appVersion[: "]*//' | sed 's/"//') && \
-# 	 NVERSION=$$(./tools/increment_version.sh -p $$VERSION) \
-# 	 app=$$(echo $$f | sed 's|deployments/charts/||g' | sed 's|/Chart.yaml||g') \
-# 	 && \
-# 	 echo "🩹 New patch from $$VERSION to $$NVERSION for $$app" && \
-# 	 sed -i "s/$$VERSION/$$NVERSION/"  $$f; done
-
+push: ## Push a previously built CMD container image
+	@export version=$(git rev-parse --short HEAD) && \
+	export registry=$(shell if [ $(STAGE) == "preprod" ]; then echo $(REGISTRY_PREPROD); else echo $(REGISTRY_DEV);fi) && \
+	export imageName="$$registry/$(CMD)" && \
+	echo "Will push $$imageName:$$version" && \
+	$(DOCKER) push "$$imageName:$$version"
 
 gen: ## Generate a fully typed golang orm from postgres db introspection cf pkg/_generate.go
 	@sqlboiler psql -c utils/config/sqlboiler.toml -o "pkg/repository"
-
-# updatesecrets: ## Update dotenv secrets files
-# 	@for f in secrets/**/*.yaml ; do \
-# 	                [[ $$f == *dev* ]] && echo "[INFO] no need to encrypt $$f secret" || \
-# 	                echo "[INFO] Adding $$f" && git secret add $$f; \
-# 	done
-# 	git secret hide
-
-# reveal:
-# 	@git secret reveal
 
 clean: ## Stop background cmd(s) and cleaning binary and temporary files 
 	@rm -rf bin || true
@@ -129,4 +88,4 @@ clean: ## Stop background cmd(s) and cleaning binary and temporary files
 	@rm *.log **/*.log *.pid **/*.pid || true
 
 
-.PHONY: help clean setup test all
+.PHONY: help clean setup test all build push gen
