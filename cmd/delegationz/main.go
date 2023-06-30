@@ -34,6 +34,8 @@ func staticPath() *string {
 	return nil
 }
 
+// The above methods surely need a refacto !
+
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
 	dbClient := db.Get(dbURL())
