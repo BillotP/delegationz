@@ -91,7 +91,7 @@ func saveDelegations(db *sql.DB, ctx context.Context, delegation *tzkt.Delegatio
 		ids[i] = row.ID
 		timestamps[i] = row.Timestamp
 		amounts[i] = row.Amount
-		delegators[i] = row.NewDelegate.Address
+		delegators[i] = row.Sender.Address
 		block_hashes[i] = row.Block
 		block_heights[i] = row.Level
 	}
