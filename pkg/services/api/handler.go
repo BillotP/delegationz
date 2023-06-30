@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"delegationz/pkg/repository"
-	"delegationz/pkg/services/tzkt"
 	"fmt"
 	"log"
 	"net/http"
-	"sort"
 	"strconv"
 	"time"
 
@@ -16,74 +14,50 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-// QuickDelegationsHandler return delegation items with optionnal query param filter `year=YYYY`
-func QuickDelegationsHandler(tzktClient *tzkt.TzktClient) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		year := c.QueryParam("year")
-		twoHoursAgo := time.Now().Add(-2 * time.Hour)
-		currYear := int64(twoHoursAgo.Year())
-		originFilters := &tzkt.Filters{
-			TimestampGe: twoHoursAgo.Format(time.RFC3339),
-		}
-		v, ok := strconv.ParseInt(year, 10, 64)
-		genesis := 2017
-		if ok == nil && v > int64(genesis) && v <= currYear {
-			lastDayOfYear := time.Date(int(v+1), time.January, 1, 0, 0, 0, 0, time.UTC)
-			lastDayOfYear = lastDayOfYear.AddDate(0, 0, -1)
-			originFilters.TimestampGe = lastDayOfYear.Format(time.RFC3339)
-		} else if ok == nil && (v < int64(genesis) || v > currYear) {
-			log.Printf("[WARN] Invalid year submitted: %d", v)
-			return c.JSON(ErrBadParam("").Code, ErrBadParam("year"))
-		}
-		dd, err := tzktClient.Delegations(originFilters, &tzkt.Pagination{
-			Limit: 2,
-		})
-		if err != nil {
-			log.Printf("[ERROR] Failed to get /delegations: %+v", err)
-			return c.JSON(ErrSomethingBad.Code, ErrSomethingBad)
-		}
-		var out = []DelegationItem{}
-		for _, el := range dd.Items {
-			if el == nil {
-				continue
-			}
-			out = append(out, *NewDelegationItemFromApi(el))
-		}
-		// Most recent first
-		sort.Sort(ByTimestamp(out))
-		return c.JSON(http.StatusOK, DelegationsResponse{Data: out})
-	}
-}
-
-// DelegationsHandler return delegation items with optionnal query param filter `year=YYYY`
+// DelegationsHandler return delegation items with optionnal query param filters `year=YYYY&limit=xx&page=xx`
 func DelegationsHandler(db *sql.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		year := c.QueryParam("year")
+		limit := c.QueryParam("limit")
+		page := c.QueryParam("page")
+
 		twoHoursAgo := time.Now().Add(-2 * time.Hour)
 		currYear := int64(twoHoursAgo.Year())
-		v, ok := strconv.ParseInt(year, 10, 64)
-		genesis := 2017
-		mods := []qm.QueryMod{
-			qm.OrderBy("timestamp"),
-			qm.Limit(100),
-		}
-		if ok == nil && v > int64(genesis) && v <= currYear {
-			// lastDayOfYear := time.Date(int(v+1), time.January, 1, 0, 0, 0, 0, time.UTC)
-			// lastDayOfYear = lastDayOfYear.AddDate(0, 0, -1)
-			// originFilters.TimestampGe = lastDayOfYear.Format(time.RFC3339)
-			// CREATE INDEX idx_table_datetime_year ON delegations (date_part('year', timestamp));
-			mods = append(mods, qm.Where("EXTRACT(YEAR FROM timestamp) = $1", v))
-		} else if ok == nil && (v < int64(genesis) || v > currYear) {
-			log.Printf("[WARN] Invalid year submitted: %d", v)
+		yearParam, errYear := strconv.ParseInt(year, 10, 64)
+		limitParam, errLimit := strconv.ParseInt(limit, 10, 64)
+		offsetParam, errOffset := strconv.ParseInt(page, 10, 64)
+
+		genesis := 2018
+		mods := []qm.QueryMod{qm.OrderBy("timestamp desc")}
+		// Year parsing
+		if errYear == nil && yearParam >= int64(genesis) && yearParam <= currYear {
+			mods = append(mods, qm.Where("EXTRACT(YEAR FROM timestamp) = $1", yearParam))
+		} else if errYear == nil && (yearParam < int64(genesis) || yearParam > currYear) {
+			log.Printf("[WARN] Invalid year submitted: %d", yearParam)
 			return c.JSON(ErrBadParam("").Code, ErrBadParam("year"))
 		}
+		// Limit parsing
+		if errLimit == nil && limitParam > 0 && limitParam < 200 {
+			mods = append(mods, qm.Limit(int(limitParam)))
+		} else {
+			mods = append(mods, qm.Limit(int(100)))
+		}
+		// Offset parsing
+		if errOffset == nil && offsetParam >= 0 {
+			if limitParam == 0 {
+				limitParam = 100
+			}
+			mods = append(mods, qm.Offset(int(offsetParam*limitParam)))
+		} else {
+			mods = append(mods, qm.Offset(0))
+		}
+		// DB Fetching (should be targetting a read only replica)
 		dd, err := repository.Delegations(mods...).All(context.Background(), db)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get /delegations: %+v", err)
 			return c.JSON(ErrSomethingBad.Code, ErrSomethingBad)
 		}
-		// Note : Serializiation should be done database side and result stored
-		// in cache to avoid the below operation.
+		// Serialization loop : TODO : avoid it
 		var out = []DelegationItem{}
 		for _, el := range dd {
 			if el == nil {
@@ -99,3 +73,5 @@ func DelegationsHandler(db *sql.DB) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, DelegationsResponse{Data: out})
 	}
 }
+
+func HealthHandler(c echo.Context) error { return c.NoContent(http.StatusOK) }

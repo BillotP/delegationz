@@ -7,13 +7,11 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
 
-func Run(db *sql.DB, pageSize int) {
-	var wg sync.WaitGroup
+func Run(db *sql.DB, pageSize int, watch, verbose bool) {
 
 	cli := tzkt.NewTzktClient()
 
@@ -24,11 +22,11 @@ func Run(db *sql.DB, pageSize int) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	// TODO : Check this magic numbers
+	// TODO : Check this magic number (maybe optimise with )
 	numGoroutines := 5
 
 	for i := 0; i < numGoroutines; i++ {
-		go saveDelegations(db, ctx, delegationChannel)
+		go saveDelegations(db, ctx, delegationChannel, verbose)
 	}
 
 	flters := tzkt.Filters{}
@@ -39,6 +37,8 @@ func Run(db *sql.DB, pageSize int) {
 	if lastID := getLastID(db); lastID != nil {
 		v := *lastID
 		pagination.OffsetCr = int(v)
+	} else {
+		log.Printf("[INFO] No data saved, starting sync")
 	}
 fetchLoop:
 	for {
@@ -47,13 +47,24 @@ fetchLoop:
 			log.Printf("[ERROR] error making API request:%v\n", err)
 			break
 		}
-		log.Printf("[INFO] Fetched %d items", len(resp.Items))
+		if verbose {
+			log.Printf("[INFO] Fetched %d items", len(resp.Items))
+		}
 		delegationChannel <- resp
 
-		if !resp.HasMore || resp.Items == nil {
+		if !watch && (!resp.HasMore || resp.Items == nil) {
 			break fetchLoop
+		} else if !resp.HasMore {
+			if verbose {
+				log.Printf("[INFO] Last events saved, waiting for update polling\n")
+			}
+			time.Sleep(5 * time.Second)
 		}
-		pagination.OffsetCr = int(resp.Items[len(resp.Items)-1].ID)
+		if len(resp.Items) > 0 {
+			pagination.OffsetCr = int(resp.Items[len(resp.Items)-1].ID)
+		} else {
+			pagination.OffsetCr = int(*getLastID(db))
+		}
 
 		select {
 		case <-stop:
@@ -66,8 +77,6 @@ fetchLoop:
 	}
 
 	close(delegationChannel)
-
-	wg.Wait()
 }
 
 func getLastID(db *sql.DB) *int64 {
@@ -79,7 +88,7 @@ func getLastID(db *sql.DB) *int64 {
 	return &lID
 }
 
-func saveDelegations(db *sql.DB, ctx context.Context, delegationChannel <-chan *tzkt.DelegationItems) {
+func saveDelegations(db *sql.DB, ctx context.Context, delegationChannel <-chan *tzkt.DelegationItems, verbose bool) {
 
 	for {
 		select {
@@ -118,7 +127,9 @@ func saveDelegations(db *sql.DB, ctx context.Context, delegationChannel <-chan *
 					return
 				}
 				cnt, _ := rr.RowsAffected()
-				log.Printf("[INFO] %d delegations saved", cnt)
+				if verbose {
+					log.Printf("[INFO] %d delegations saved", cnt)
+				}
 			}()
 		}
 
