@@ -21,5 +21,5 @@ func dbURL() string {
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
 	dbclient := db.Get(dbURL())
-	importer.Run(dbclient, 800, false, true)
+	importer.Run(dbclient, 800, false, true, true)
 }

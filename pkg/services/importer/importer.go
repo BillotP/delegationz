@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func Run(db *sql.DB, pageSize int, watch, verbose bool) {
+func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) {
 
 	cli := tzkt.NewTzktClient()
 
@@ -27,9 +27,11 @@ func Run(db *sql.DB, pageSize int, watch, verbose bool) {
 
 	if lastID := getLastID(db); lastID != nil {
 		v := *lastID
-		pagination.OffsetCr = int(v)
+		if !fromstart {
+			pagination.OffsetCr = int(v)
+		}
 	} else {
-		log.Printf("[INFO] No data saved, starting sync")
+		log.Printf("[INFO] No existing index, starting (re)sync")
 	}
 fetchLoop:
 	for {
