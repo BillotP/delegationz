@@ -1,5 +1,6 @@
 # [DelegationZ](https://delegationz.fly.dev/) - Get latest and historical delegations events on Tezos Chain
-[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://api.tzkt.io/) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://stats.uptimerobot.com/6pOz8UVrqA) 
+
+[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://api.tzkt.io/) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://stats.uptimerobot.com/6pOz8UVrqA)
 
 ## Introduction
 
@@ -35,12 +36,12 @@ The three parts detailed above should be able to communicate together or at leas
 
 API :
 
-| Path | Params | Response |
-|---|:---:|---|
-| /* | NA | [HTML](https://delegationz.fly.dev)<br> |
-| /xtz/delegations | QueryParams:<br> **year** : YYYY<br>**limit** : <= 100<br>**page** : int  | JSON <br><br>200 :<br> ```[{timestamp: string, amount: string, delegator: string, block: string}, ...]```<br>500 :<br>```{message: string}```<br>400 :<br>```[{timestamp: string, amount: string, delegator: string, block: string}, ...]```<br>500 :<br>```{message: string}``` |
-| /xtz/sync | NA | JSON<br><br>200 :<br>```{id: number, timestamp: string, amount: number, delegator: string, block_hash: string, block_level: number}```<br>500 :<br>```{message: string}``` |
-| /health | NA | HTTP NO CONTENT CODE 200 |
+| Path             |                                  Params                                  | Response                                                                                                                                                                                                                                                         |
+| ---------------- | :----------------------------------------------------------------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| /\*              |                                    NA                                    | [HTML](https://delegationz.fly.dev)<br>                                                                                                                                                                                                                          |
+| /xtz/delegations | QueryParams:<br> **year** : YYYY<br>**limit** : <= 100<br>**page** : int | JSON <br><br>200 :<br> `[{timestamp: string, amount: string, delegator: string, block: string}, ...]`<br>500 :<br>`{message: string}`<br>400 :<br>`[{timestamp: string, amount: string, delegator: string, block: string}, ...]`<br>500 :<br>`{message: string}` |
+| /xtz/sync        |                                    NA                                    | JSON<br><br>200 :<br>`{id: number, timestamp: string, amount: number, delegator: string, block_hash: string, block_level: number}`<br>500 :<br>`{message: string}`                                                                                               |
+| /health          |                                    NA                                    | HTTP NO CONTENT CODE 200                                                                                                                                                                                                                                         |
 
 ### Limits
 
@@ -133,14 +134,15 @@ feat(api): pagination filters for /tzc/delegations endpoint
 
 Regarding the deployment strategy, it should be carefully planned based on required business and engineering requirements such as availability, latency , usage volume / related costs, existing pipelines and infrastucture ...
 
-~~This repository project is **not** actually deployed somewhere, sorry about that.~~ 
+~~This repository project is **not** actually deployed somewhere, sorry about that.~~
 **UPDATE** : It is ! 🚀🚀🚀🚀
 
 ## Misc
 
 - ~~During the [importer](cmd/importer/main.go) development, a strange reference api behavior appear, reproduction and developement is summarised in [tzkt_pagination_test.sh](utils/scripts/tzkt_pagination_test.sh) script.~~ (Tss .. those developers who can't read a documentation ...)
+
 - In the specifications requirement , the `block` field asked for the api response to looks like a stringified bigint (as the block level) (`"block": "2338084"`) but the reference api is returning the hash like : `"block": "BLwRUPupdhP8TyWp9J6TbjLSCxPPW6tyhVPF2KmNAbLPt7thjPw",` . Current implementation will return the `level` as the `block` response field. It could been suggested that each api features a more descriptive name for their fields as `block_level` or `block_hash`.
 
-- In the specifiction requirements, the `delegator` field has been mapped from `"newDelegate": { "address":"..."}` with no confidence in the fact that `newDelegate` is the asked `delegator`.
+- ~~In the specifiction requirements, the `delegator` field has been mapped from `"newDelegate": { "address":"..."}` with no confidence in the fact that `newDelegate` is the asked `delegator`.~~ (Tss .. those developers who can't read the specifications...)
 
 - Regarding the delegator field, it could sometimes be empty .. 🤷
