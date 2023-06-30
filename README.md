@@ -1,5 +1,5 @@
 # [DelegationZ](https://delegationz.fly.dev/) - Get latest and historical delegations events on Tezos Chain
-[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://forthebadge.com) 
+[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://api.tzkt.io/) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://stats.uptimerobot.com/6pOz8UVrqA) 
 
 ## Introduction
 
@@ -13,16 +13,13 @@ A Golang service to fetch delegations events from [TZkt.io](https://api.tzkt.io/
 
 As per the specifications above, we will need at least three distinct parts :
 
-- [Importer](cmd/importer/main.go) \* :
-  First brick to run in order to sync historical datas from reference [tzkt.io](https://api.tzkt.io) api.
-
-- [Watcher](cmd/watcher/main.go) \* :
-  A "realtime" or "cron like" job to keep a synchronized state with the reference [tzkt.io](https://api.tzkt.io) api.
+- [Importer / Watcher](cmd/importer/main.go) \* :
+  First brick to run in order to sync historical datas from reference [tzkt.io](https://api.tzkt.io) api. Once sync is completed, a "realtime" or "cron like" job is kept running to keep it.
 
 - [Api](cmd/api/main.go) \*:
   A "RESTish" API to expose gathered data.
 
-**\*** The whole parts could either be combined in one binary or built and deployed separately according to requirements.
+**\*** The whole parts are combined [in one binary](cmd/delegationz/main.go) or could be built and deployed separately according to requirements.
 
 ### Implementation
 
@@ -35,6 +32,15 @@ To first fetch reference api data's, the need to develop an isolated, tested and
 Persistence and communication :
 
 The three parts detailed above should be able to communicate together or at least referring themselves to a single source of truth. In a will to be "simple", this implementation is using Postgres to store and retrieve delegations datas. For realtime need or added observability, a "pubsub style" messaging queue could be later introduced for example to share sync progress or to receive filtered notifications for a particular "baker" or else...
+
+API :
+
+| Path | Params | Response |
+|---|:---:|---|
+| /* | NA | [HTML](https://delegationz.fly.dev)<br> |
+| /xtz/delegations | QueryParams:<br> **year** : YYYY<br>**limit** : <= 100<br>**page** : int  | JSON <br><br>200 :<br> ```[{timestamp: string, amount: string, delegator: string, block: string}, ...]```<br>500 :<br>```{message: string}```<br>400 :<br>```[{timestamp: string, amount: string, delegator: string, block: string}, ...]```<br>500 :<br>```{message: string}``` |
+| /xtz/sync | NA | JSON<br><br>200 :<br>```{id: number, timestamp: string, amount: number, delegator: string, block_hash: string, block_level: number}```<br>500 :<br>```{message: string}``` |
+| /health | NA | HTTP NO CONTENT CODE 200 |
 
 ### Limits
 
