@@ -1,6 +1,6 @@
 # [DelegationZ](https://delegationz.fly.dev/) - Get latest and historical delegations events on Tezos Chain
 
-[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://api.tzkt.io/) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://stats.uptimerobot.com/6pOz8UVrqA)
+[![forthebadge](https://forthebadge.com/images/badges/built-with-grammas-recipe.svg)](https://api.tzkt.io/) [![forthebadge](https://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)](https://stats.uptimerobot.com/6pOz8UVrqA/794697960)
 
 ## Introduction
 
