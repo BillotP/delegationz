@@ -135,7 +135,7 @@ feat(api): pagination filters for /tzc/delegations endpoint
 Regarding the deployment strategy, it should be carefully planned based on required business and engineering requirements such as availability, latency , usage volume / related costs, existing pipelines and infrastucture ...
 
 ~~This repository project is **not** actually deployed somewhere, sorry about that.~~
-**UPDATE** : It is ! 🚀🚀🚀🚀
+**UPDATE** : It is! thanks to [Neon](https://neon.tech/) for postgres DB and [Fly.io](https://fly.io/) for serverless app hosting ! 🚀🚀🚀🚀
 
 ## Misc
 
@@ -145,4 +145,6 @@ Regarding the deployment strategy, it should be carefully planned based on requi
 
 - ~~In the specifiction requirements, the `delegator` field has been mapped from `"newDelegate": { "address":"..."}` with no confidence in the fact that `newDelegate` is the asked `delegator`.~~ (Tss .. those developers who can't read the specifications...)
 
-- Regarding the delegator field, it could sometimes be empty .. 🤷
+- ~~Regarding the delegator field, it could sometimes be empty .. 🤷~~ ...
+
+- Should have spent some more time reading [tzkt blog](https://baking-bad.org/blog/tag/TzKT/) and more precisely [this subject](https://baking-bad.org/blog/2020/07/29/tezos-explorer-api-tzkt-how-often-to-make-requests/)
