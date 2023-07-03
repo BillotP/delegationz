@@ -30,6 +30,7 @@ pkg/services/frontend/build/*
 ###
 # Build dir , tmp storage ...
 out
+*.zip
 
 ## JS (already ignored by migrations/.gitignore but just in case)
 node_modules

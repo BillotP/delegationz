@@ -37,7 +37,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        cmd: ["api", "delegationz", "importer"]
+        cmd: ["api", "importer", "delegationz"]
     steps:
       - uses: actions/checkout@v3
       - name: Login to  Github Container Registry
@@ -48,6 +48,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       # ## Build and push to container registry
       - uses: docker/setup-buildx-action@v2
+      - name: Get frontend app for delegationz cmd
+        if: ${{ matrix.cmd }} == delegationz
+        run: |
+          download_url=$(curl -s https://api.github.com/repos/billotp/dlgz_app/releases/latest | jq -r '.assets[0].browser_download_url')
+          wget "$download_url" -O build.zip
+          unzip -u build.zip -d pkg/services/frontend/build
+
       - uses: docker/build-push-action@v3
         with:
           context: .
