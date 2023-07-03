@@ -43,7 +43,7 @@ testdb: ## Run a fresh migrated local database
 	@$(DOCKER) run --name test-postgres -d -p 5432:5432 \
 	--env POSTGRES_PASSWORD=supersecret \
 	--env POSTGRES_DB=dev \
-	docker.io/postgres:alpine
+	docker.io/postgres:14-alpine
 	@sleep 5 && make devmigrate
 	@echo "[INFO] Postgres Test available at postgres://postgres:supersecret@localhost:5432/dev"
 
