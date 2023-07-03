@@ -21,6 +21,12 @@ coverage.html
 # Go workspace file
 go.work
 
+# Frontend app code
+pkg/services/frontend/build/*
+# Dirty hack to keep go linter api when there is no go:embed build/* files
+!pkg/services/frontend/build/__dummy
+
+
 ###
 # Build dir , tmp storage ...
 out
