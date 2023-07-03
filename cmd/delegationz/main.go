@@ -27,17 +27,18 @@ func listeningPort() string {
 	return "8080"
 }
 
-// staticPath must be in a dedicated config struct and be loaded via env at runtime
-func staticPath() *string {
-	if v, ok := os.LookupEnv("STATIC_PATH"); ok && v != "" {
-		return &v
+// withFrontend must be in a dedicated config struct and be loaded via env at runtime
+func withFrontend() bool {
+	if v, ok := os.LookupEnv("FRONTEND"); ok && v != "" {
+		v = strings.ToLower(v)
+		return v == "true" || v == "1"
 	}
-	return nil
+	return false
 }
 
 // verbose must be in a dedicated config struct and be loaded via env at runtime
 func verbose() bool {
-	if v, ok := os.LookupEnv("STATIC_PATH"); ok && v != "" {
+	if v, ok := os.LookupEnv("VERBOSE"); ok && v != "" {
 		v = strings.ToLower(v)
 		return v == "true" || v == "1"
 	}
@@ -49,8 +50,8 @@ func verbose() bool {
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
 	dbClient := db.Get(dbURL())
-	// Starting API on goroutine
-	go api.Serve(listeningPort(), staticPath(), dbClient)
+	// Starting API on separate goroutine
+	go api.Serve(listeningPort(), withFrontend(), dbClient)
 	// Running delegation updater on main routine
 	importer.Run(dbClient, 800, true, false, verbose())
 }

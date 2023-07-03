@@ -7,7 +7,7 @@ app = "delegationz"
 primary_region = "cdg"
 
 [build]
-  dockerfile = "utils/dockerfiles/delegationz.dockerfile"
+  dockerfile = "golang.dockerfile"
   ignorefile = ".dockerignore"
   [build.args]
     cmd = "delegationz"
@@ -20,3 +20,6 @@ primary_region = "cdg"
   auto_start_machines = true
   min_machines_running = 0
   processes = ["app"]
+
+[env]
+  FRONTEND = "true"

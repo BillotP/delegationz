@@ -8,6 +8,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
+	sentryecho "github.com/getsentry/sentry-go/echo"
+
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -33,7 +36,11 @@ func DelegationsHandler(db *sql.DB) echo.HandlerFunc {
 		if errYear == nil && yearParam >= int64(genesis) && yearParam <= currYear {
 			mods = append(mods, qm.Where("EXTRACT(YEAR FROM timestamp) = $1", yearParam))
 		} else if errYear == nil && (yearParam < int64(genesis) || yearParam > currYear) {
-			log.Printf("[WARN] Invalid year submitted: %d", yearParam)
+			errMsg := fmt.Sprintf("[WARN] Invalid year submitted: %d", yearParam)
+			log.Println(errMsg)
+			if hub := sentryecho.GetHubFromContext(c); hub != nil {
+				hub.CaptureMessage(errMsg)
+			}
 			return c.JSON(ErrBadParam("").Code, ErrBadParam("year"))
 		}
 		// Limit parsing
@@ -55,6 +62,9 @@ func DelegationsHandler(db *sql.DB) echo.HandlerFunc {
 		dd, err := repository.Delegations(mods...).All(context.Background(), db)
 		if err != nil {
 			log.Printf("[ERROR] Failed to get /delegations: %+v", err)
+			if hub := sentryecho.GetHubFromContext(c); hub != nil {
+				hub.CaptureException(err)
+			}
 			return c.JSON(ErrSomethingBad.Code, ErrSomethingBad)
 		}
 		// Serialization loop : TODO : avoid it
@@ -71,6 +81,22 @@ func DelegationsHandler(db *sql.DB) echo.HandlerFunc {
 			})
 		}
 		return c.JSON(http.StatusOK, DelegationsResponse{Data: out})
+	}
+}
+
+func SyncHandler(db *sql.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		lastSyncedItem, err := repository.Delegations(
+			qm.OrderBy("id desc"),
+		).One(c.Request().Context(), db)
+		if err != nil {
+			log.Printf("[ERROR] Failed to get last delegation : %v", err)
+			if hub := sentryecho.GetHubFromContext(c); hub != nil {
+				hub.CaptureException(err)
+			}
+			return c.JSON(ErrSomethingBad.Code, ErrSomethingBad)
+		}
+		return c.JSON(http.StatusOK, lastSyncedItem)
 	}
 }
 
