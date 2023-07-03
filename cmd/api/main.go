@@ -28,5 +28,5 @@ func listeningPort() string {
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
 	dbClient := db.Get(dbURL())
-	api.Serve(listeningPort(), nil, dbClient)
+	api.Serve(listeningPort(), false, dbClient)
 }
