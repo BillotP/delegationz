@@ -16,6 +16,7 @@ jobs:
           go-version: "1.20"
       - name: Run unit tests
         run: |
+          make testdb
           make test | tee -a out.txt
           cat out.txt >> $GITHUB_STEP_SUMMARY
       - name: Convert coverage to lcov
@@ -30,6 +31,7 @@ jobs:
     # environment:
     #   name: ${{ github.ref_name }}
     #   url: "${{ vars.DEPLOY_URL }}"
+    needs: [tests]
     runs-on: ubuntu-latest
     permissions:
       contents: read
