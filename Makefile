@@ -64,7 +64,7 @@ build: ## Build a CMD container image
 	@export version=$$(git rev-parse --short HEAD) && \
 	export registry=$(REGISTRY_DEV) && \
 	export imageName="$$registry/$(CMD)" && \
-	export dockerfile=$(shell if [ $(CMD) == "delegationz" ]; then echo "utils/dockerfiles/delegationz.dockerfile"; else echo "utils/dockerfiles/light.dockerfile";fi) && \
+	export dockerfile=golang.dockerfile && \
 	echo "$$dockerfile" && \
 	$(DOCKER) build -t "$$imageName:$$version" \
 	--build-arg version=$$version \
@@ -77,6 +77,10 @@ push: ## Push a previously built CMD container image
 	export imageName="$$registry/$(CMD)" && \
 	echo "Will push $$imageName:$$version" && \
 	$(DOCKER) push "$$imageName:$$version"
+
+deploy: ## Deploy using flyctl if authenticated
+	@cd ../dlgz_app && pnpm build:fly && cp -r build ../delegationz/pkg/services/frontend/ && cd -
+	@fly deploy -c fly.toml --build-arg "version=v$(BUILD)" --build-arg "cmd=delegationz"
 
 gen: ## Generate a fully typed golang orm from postgres db introspection cf pkg/_generate.go
 	@sqlboiler psql -c sqlboiler.toml -o "pkg/repository"
