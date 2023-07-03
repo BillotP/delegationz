@@ -49,9 +49,9 @@ testdb: ## Run a fresh migrated local database
 
 test: ## Run all unit tests
 	@rm cover.out coverage.html || true
-	@go test -coverprofile cover.out -v ./... || true
-	@go tool cover -func cover.out
-	@go tool cover -html=cover.out -o coverage.html
+	@go test -covermode=count -coverprofile=coverage.out -v ./... || true
+	@go tool cover -func coverage.out
+	@go tool cover -html=coverage.out -o coverage.html
 
 redis: ## Launch a local redis store
 	@$(DOCKER) kill local-redis || true
