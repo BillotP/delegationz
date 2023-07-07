@@ -1,9 +1,10 @@
 package main
 
 import (
-	"delegationz/pkg/services/api"
-	"delegationz/pkg/services/db"
-	"delegationz/pkg/services/importer"
+	"delegationz/pkg/api"
+	"delegationz/pkg/db"
+	"delegationz/pkg/importer"
+	"delegationz/pkg/tzkt"
 	"log"
 	"os"
 )
@@ -20,6 +21,16 @@ func dbURL() string {
 
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
-	dbclient := db.Get(dbURL())
-	importer.Run(dbclient, 800, false, true, true)
+	if err := db.Init(dbURL()); err != nil {
+		log.Printf("[ERROR] Failed to connect to db : %s\n", err)
+		os.Exit(1)
+	}
+	dbClient := db.Get()
+	apiclient := tzkt.NewTzktClient()
+	importr := importer.New(dbClient, apiclient,
+		importer.WithVerbose(true),
+		importer.WithPageSize(800),
+		importer.WithWatch(true),
+		importer.WithReset(false))
+	importr.Run()
 }

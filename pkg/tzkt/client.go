@@ -8,6 +8,9 @@ import (
 
 var defaultLimit = 100
 
+type ITzktClient interface {
+	Delegations(filters *Filters, page *Pagination) (*DelegationItems, error)
+}
 type TzktClient struct {
 	cli      *http.Client
 	baseURL  string

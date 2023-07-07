@@ -10,10 +10,7 @@ import (
 
 var inst *sql.DB
 
-func Get(dbURL string) *sql.DB {
-	if inst != nil {
-		return inst
-	}
+func Init(dbURL string) error {
 	// Configure the PostgreSQL connection
 	connConfig, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
@@ -31,5 +28,13 @@ func Get(dbURL string) *sql.DB {
 	log.Printf("[INFO] Connected to db %s @ %s",
 		connConfig.ConnConfig.Database, connConfig.ConnConfig.Host)
 	inst = db
-	return inst
+	return nil
+}
+
+func Get() *sql.DB {
+	if inst != nil {
+		return inst
+	}
+	log.Printf("[ERROR] Database is not initialised")
+	return nil
 }

@@ -11,7 +11,7 @@ COPY cmd/$cmd/main.go .
 
 ARG version=dev
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-w -s -X 'delegationz/pkg/services/api.VERSION=$version'" \ 
+    -ldflags="-w -s -X 'delegationz/pkg/api.VERSION=$version'" \ 
     -o /build/app -mod=mod \
     /src/main.go
 RUN upx --best --lzma /build/app

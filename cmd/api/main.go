@@ -1,8 +1,8 @@
 package main
 
 import (
-	"delegationz/pkg/services/api"
-	"delegationz/pkg/services/db"
+	"delegationz/pkg/api"
+	"delegationz/pkg/db"
 	"log"
 	"os"
 )
@@ -27,6 +27,10 @@ func listeningPort() string {
 
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
-	dbClient := db.Get(dbURL())
+	if err := db.Init(dbURL()); err != nil {
+		log.Printf("[ERROR] Failed to connect to db : %s\n", err)
+		os.Exit(1)
+	}
+	dbClient := db.Get()
 	api.Serve(listeningPort(), false, dbClient)
 }

@@ -3,7 +3,6 @@ package frontend
 import (
 	"embed"
 	"io/fs"
-	"log"
 	"net/http"
 )
 
@@ -13,10 +12,10 @@ import (
 var BuildFs embed.FS
 
 // Get the subtree of the embedded files with `build` directory as a root.
-func BuildHTTPFS() http.FileSystem {
+func BuildHTTPFS() (http.FileSystem, error) {
 	build, err := fs.Sub(BuildFs, "build")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	return http.FS(build)
+	return http.FS(build), nil
 }

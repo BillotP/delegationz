@@ -79,7 +79,7 @@ push: ## Push a previously built CMD container image
 	$(DOCKER) push "$$imageName:$$version"
 
 deploy: ## Deploy using flyctl if authenticated
-	@cd ../dlgz_app && pnpm build:fly && cp -r build ../delegationz/pkg/services/frontend/ && cd -
+	@cd ../dlgz_app && pnpm build:fly && cp -r build ../delegationz/pkg/frontend/ && cd -
 	@fly deploy -c fly.toml --build-arg "version=v$(BUILD)" --build-arg "cmd=delegationz"
 
 gen: ## Generate a fully typed golang orm from postgres db introspection cf pkg/_generate.go

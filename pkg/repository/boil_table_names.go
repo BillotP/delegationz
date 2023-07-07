@@ -4,7 +4,11 @@
 package repository
 
 var TableNames = struct {
-	Delegations string
+	Delegations      string
+	DelegationsStats string
+	Delegators       string
 }{
-	Delegations: "delegations",
+	Delegations:      "delegations",
+	DelegationsStats: "delegations_stats",
+	Delegators:       "delegators",
 }

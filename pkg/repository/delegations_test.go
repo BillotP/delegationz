@@ -494,6 +494,125 @@ func testDelegationsInsertWhitelist(t *testing.T) {
 	}
 }
 
+func testDelegationToOneDelegatorUsingDelegationDelegator(t *testing.T) {
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var local Delegation
+	var foreign Delegator
+
+	seed := randomize.NewSeed()
+	if err := randomize.Struct(seed, &local, delegationDBTypes, false, delegationColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Delegation struct: %s", err)
+	}
+	if err := randomize.Struct(seed, &foreign, delegatorDBTypes, false, delegatorColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Delegator struct: %s", err)
+	}
+
+	if err := foreign.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	local.Delegator = foreign.Address
+	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := local.DelegationDelegator().One(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if check.Address != foreign.Address {
+		t.Errorf("want: %v, got %v", foreign.Address, check.Address)
+	}
+
+	ranAfterSelectHook := false
+	AddDelegatorHook(boil.AfterSelectHook, func(ctx context.Context, e boil.ContextExecutor, o *Delegator) error {
+		ranAfterSelectHook = true
+		return nil
+	})
+
+	slice := DelegationSlice{&local}
+	if err = local.L.LoadDelegationDelegator(ctx, tx, false, (*[]*Delegation)(&slice), nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.DelegationDelegator == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	local.R.DelegationDelegator = nil
+	if err = local.L.LoadDelegationDelegator(ctx, tx, true, &local, nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.DelegationDelegator == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	if !ranAfterSelectHook {
+		t.Error("failed to run AfterSelect hook for relationship")
+	}
+}
+
+func testDelegationToOneSetOpDelegatorUsingDelegationDelegator(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Delegation
+	var b, c Delegator
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, delegationDBTypes, false, strmangle.SetComplement(delegationPrimaryKeyColumns, delegationColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &b, delegatorDBTypes, false, strmangle.SetComplement(delegatorPrimaryKeyColumns, delegatorColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &c, delegatorDBTypes, false, strmangle.SetComplement(delegatorPrimaryKeyColumns, delegatorColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	for i, x := range []*Delegator{&b, &c} {
+		err = a.SetDelegationDelegator(ctx, tx, i != 0, x)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if a.R.DelegationDelegator != x {
+			t.Error("relationship struct not set to correct value")
+		}
+
+		if x.R.Delegations[0] != &a {
+			t.Error("failed to append to foreign relationship struct")
+		}
+		if a.Delegator != x.Address {
+			t.Error("foreign key was wrong value", a.Delegator)
+		}
+
+		zero := reflect.Zero(reflect.TypeOf(a.Delegator))
+		reflect.Indirect(reflect.ValueOf(&a.Delegator)).Set(zero)
+
+		if err = a.Reload(ctx, tx); err != nil {
+			t.Fatal("failed to reload", err)
+		}
+
+		if a.Delegator != x.Address {
+			t.Error("foreign key was wrong value", a.Delegator, x.Address)
+		}
+	}
+}
+
 func testDelegationsReload(t *testing.T) {
 	t.Parallel()
 

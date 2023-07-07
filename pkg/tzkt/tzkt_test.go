@@ -81,13 +81,14 @@ func TestDelegations(t *testing.T) {
 	}
 
 	// Create filters and pagination objects
-	filters := &Filters{}
-	filters.SetFilter("TimestampGt", "2022-01-01")
-	filters.SetFilter("TimestampLt", "2022-12-31")
-	pagination := &Pagination{
-		Limit:    10,
-		OffsetPg: 0,
-	}
+	filters := NewFilters(
+		WithTimestampGt("2022-01-01"),
+		WithTimestampLt("2022-12-31"),
+	)
+	pagination := NewPagination(
+		WithLimit(10),
+		WithOffsetPage(0),
+	)
 
 	// Make a test request to the Delegations method
 	_, err := client.Delegations(filters, pagination)

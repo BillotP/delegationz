@@ -53,7 +53,7 @@ jobs:
         run: |
           download_url=$(curl -s https://api.github.com/repos/billotp/dlgz_app/releases/latest | jq -r '.assets[0].browser_download_url')
           wget "$download_url" -O build.zip
-          unzip -u build.zip -d pkg/services/frontend/build
+          unzip -u build.zip -d pkg/frontend/build
 
       - uses: docker/build-push-action@v3
         with:
