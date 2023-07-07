@@ -11,10 +11,51 @@ import (
 	"time"
 )
 
-func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) error {
+type Importer struct {
+	PageSize int
+	Watch    bool
+	Reset    bool
+	Verbose  bool
+	db       *sql.DB
+	tzktcli  tzkt.ITzktClient
+}
 
-	cli := tzkt.NewTzktClient()
+func New(db *sql.DB, tzktcli tzkt.ITzktClient, options ...func(*Importer)) *Importer {
+	importr := &Importer{
+		db:      db,
+		tzktcli: tzktcli,
+	}
+	for _, o := range options {
+		o(importr)
+	}
+	return importr
+}
 
+func WithPageSize(pagesize int) func(*Importer) {
+	return func(i *Importer) {
+		i.PageSize = pagesize
+	}
+}
+
+func WithWatch(watch bool) func(*Importer) {
+	return func(i *Importer) {
+		i.Watch = watch
+	}
+}
+
+func WithReset(reset bool) func(*Importer) {
+	return func(i *Importer) {
+		i.Reset = reset
+	}
+}
+
+func WithVerbose(verbose bool) func(*Importer) {
+	return func(i *Importer) {
+		i.Verbose = verbose
+	}
+}
+
+func (i *Importer) Run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stop := make(chan os.Signal, 1)
@@ -22,44 +63,44 @@ func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) error {
 
 	flters := tzkt.NewFilters()
 	pagination := tzkt.NewPagination()
-	if lastID := getLastID(db); lastID != nil {
+	if lastID := getLastID(i.db); lastID != nil {
 		v := *lastID
-		if !fromstart {
+		if !i.Reset {
 			pagination = tzkt.NewPagination(tzkt.WithOffsetCursor(int(v)))
 		}
-	} else if verbose {
+	} else if i.Verbose {
 		log.Printf("[INFO] No existing index, starting (re)sync")
 	}
 	for {
 		select {
 		default:
-			resp, err := cli.Delegations(flters, pagination)
+			resp, err := i.tzktcli.Delegations(flters, pagination)
 			if err != nil {
 				log.Printf("[ERROR] error making API request:%v\n", err)
 				return err
 			}
-			if verbose {
+			if i.Verbose {
 				log.Printf("[INFO] Fetched %d items", len(resp.Items))
 			}
 
-			if !watch && (!resp.HasMore || resp.Items == nil) {
+			if !i.Watch && (!resp.HasMore || resp.Items == nil) {
 				// If no more items needs to be fetched and importer is not in watch mode, exiting
 				return nil
 			} else if !resp.HasMore {
-				if verbose {
+				if i.Verbose {
 					log.Printf("[INFO] Last events saved, waiting for update polling\n")
 				}
 				// Arbitrary delay between each call
 				time.Sleep(2 * time.Second)
 			}
 			if len(resp.Items) > 0 {
-				if err = saveDelegations(db, ctx, resp, verbose); err != nil {
+				if err = saveDelegations(i.db, ctx, resp, i.Verbose); err != nil {
 					return err
 				}
 				cr := int(resp.Items[len(resp.Items)-1].ID)
 				pagination = tzkt.NewPagination(tzkt.WithOffsetCursor(cr))
 			} else {
-				cr := getLastID(db)
+				cr := getLastID(i.db)
 				pagination.OffsetCr = int(*cr)
 			}
 
@@ -73,7 +114,7 @@ func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) error {
 
 func getLastID(db *sql.DB) *int64 {
 	var lID int64
-	err := db.QueryRow(`select MAX(id) from delegations`).Scan(&lID)
+	err := db.QueryRow("select MAX(id) from delegations").Scan(&lID)
 	if err == sql.ErrNoRows {
 		return nil
 	}

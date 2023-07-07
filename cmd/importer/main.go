@@ -4,6 +4,7 @@ import (
 	"delegationz/pkg/api"
 	"delegationz/pkg/db"
 	"delegationz/pkg/importer"
+	"delegationz/pkg/tzkt"
 	"log"
 	"os"
 )
@@ -24,5 +25,12 @@ func main() {
 		log.Printf("[ERROR] Failed to connect to db : %s\n", err)
 		os.Exit(1)
 	}
-	importer.Run(db.Get(), 800, false, true, true)
+	dbClient := db.Get()
+	apiclient := tzkt.NewTzktClient()
+	importr := importer.New(dbClient, apiclient,
+		importer.WithVerbose(true),
+		importer.WithPageSize(800),
+		importer.WithWatch(true),
+		importer.WithReset(false))
+	importr.Run()
 }

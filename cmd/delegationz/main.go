@@ -4,6 +4,7 @@ import (
 	"delegationz/pkg/api"
 	"delegationz/pkg/db"
 	"delegationz/pkg/importer"
+	"delegationz/pkg/tzkt"
 	"log"
 	"os"
 	"strings"
@@ -57,5 +58,11 @@ func main() {
 	// Starting API on separate goroutine
 	go api.Serve(listeningPort(), withFrontend(), dbClient)
 	// Running delegation updater on main routine
-	importer.Run(dbClient, 800, true, false, verbose())
+	apiclient := tzkt.NewTzktClient()
+	importr := importer.New(dbClient, apiclient,
+		importer.WithVerbose(verbose()),
+		importer.WithPageSize(800),
+		importer.WithWatch(true),
+		importer.WithReset(false))
+	importr.Run()
 }

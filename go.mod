@@ -3,7 +3,7 @@ module delegationz
 go 1.20
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.4.1
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/getsentry/sentry-go v0.22.0
 	github.com/google/go-querystring v1.1.0
