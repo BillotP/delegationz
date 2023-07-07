@@ -10,17 +10,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model delegations {
-  id        BigInt   @id
-  timestamp DateTime
-  amount    BigInt
-  delegator String   @db.VarChar(36)
-  block_hash    String
-  block_level    BigInt
+model delegators {
+  address           String              @id @db.VarChar(36)
+  first_seen        DateTime
+  alias             String?
+  delegations       delegations[]
+  delegations_stats delegations_stats[]
 
+  @@index([first_seen])
+}
+
+model delegations {
+  id          BigInt   @id
+  timestamp   DateTime
+  amount      BigInt
+  delegator   String   @db.VarChar(36)
+  block_hash  String
+  block_level BigInt
+
+  // One delegators To Many delegations 
+  delegator_item delegators? @relation(fields: [delegator], references: [address])
 
   @@index([delegator])
   @@index([block_hash])
   @@index([block_level])
   @@index([timestamp])
+}
+
+// WIP
+
+enum stat_kind {
+  // TOP10VALIDATORS by delegated amount  
+  TOP10VALIDATORS
+  // TOP100VALIDATORS by delegated amount
+  TOP100VALIDATORS
+  // DAILYVOLUME delegated to delegator
+  DAILYVOLUME
+  // WEEKLYVOLUME delegated to delegator
+  WEEKLYVOLUME
+  // MONTHLYVOLUME delegated to delegator
+  MONTHLYVOLUME
+  // YEARLYVOLUME delegated to delegator
+  YEARLYVOLUME
+}
+
+model delegations_stats {
+  id                BigInt    @id @default(autoincrement())
+  timestamp         DateTime  @default(now())
+  kind              stat_kind
+  value             Json
+  delegator_address String?   @db.VarChar(36)
+
+  // Is delegator volume stat ? (One delegator To Many delegations_stats)
+  delegator delegators? @relation(fields: [delegator_address], references: [address])
+
+  @@unique([kind, timestamp])
+  @@index([timestamp])
+  @@index([kind])
 }
