@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) {
+func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) error {
 
 	cli := tzkt.NewTzktClient()
 
@@ -20,54 +20,55 @@ func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	flters := tzkt.Filters{}
-	pagination := tzkt.Pagination{
-		Limit: pageSize,
-	}
-
+	flters := tzkt.NewFilters()
+	pagination := tzkt.NewPagination()
 	if lastID := getLastID(db); lastID != nil {
 		v := *lastID
 		if !fromstart {
-			pagination.OffsetCr = int(v)
+			pagination = tzkt.NewPagination(tzkt.WithOffsetCursor(int(v)))
 		}
-	} else {
+	} else if verbose {
 		log.Printf("[INFO] No existing index, starting (re)sync")
 	}
 	for {
-		resp, err := cli.Delegations(&flters, &pagination)
-		if err != nil {
-			log.Printf("[ERROR] error making API request:%v\n", err)
-			break
-		}
-		if verbose {
-			log.Printf("[INFO] Fetched %d items", len(resp.Items))
-		}
-
-		if !watch && (!resp.HasMore || resp.Items == nil) {
-			// If no more items needs to be fetched and importer is not in watch mode, exiting
-			break
-		} else if !resp.HasMore {
-			if verbose {
-				log.Printf("[INFO] Last events saved, waiting for update polling\n")
-			}
-			// Arbitrary delay between each call
-			time.Sleep(2 * time.Second)
-		}
-		if len(resp.Items) > 0 {
-			saveDelegations(db, ctx, resp, verbose)
-			pagination.OffsetCr = int(resp.Items[len(resp.Items)-1].ID)
-		} else {
-			pagination.OffsetCr = int(*getLastID(db))
-		}
-
 		select {
-		case <-stop:
-			cancel()
 		default:
+			resp, err := cli.Delegations(flters, pagination)
+			if err != nil {
+				log.Printf("[ERROR] error making API request:%v\n", err)
+				return err
+			}
+			if verbose {
+				log.Printf("[INFO] Fetched %d items", len(resp.Items))
+			}
 
+			if !watch && (!resp.HasMore || resp.Items == nil) {
+				// If no more items needs to be fetched and importer is not in watch mode, exiting
+				return nil
+			} else if !resp.HasMore {
+				if verbose {
+					log.Printf("[INFO] Last events saved, waiting for update polling\n")
+				}
+				// Arbitrary delay between each call
+				time.Sleep(2 * time.Second)
+			}
+			if len(resp.Items) > 0 {
+				if err = saveDelegations(db, ctx, resp, verbose); err != nil {
+					return err
+				}
+				cr := int(resp.Items[len(resp.Items)-1].ID)
+				pagination = tzkt.NewPagination(tzkt.WithOffsetCursor(cr))
+			} else {
+				cr := getLastID(db)
+				pagination.OffsetCr = int(*cr)
+			}
+
+		case <-stop:
+			log.Println("[INFO] Received stop signal. Exiting...")
+			cancel()
+			return nil
 		}
 	}
-	log.Println("[INFO] Received stop signal. Exiting...")
 }
 
 func getLastID(db *sql.DB) *int64 {
