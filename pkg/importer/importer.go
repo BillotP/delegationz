@@ -3,7 +3,7 @@ package importer
 import (
 	"context"
 	"database/sql"
-	"delegationz/pkg/services/tzkt"
+	"delegationz/pkg/tzkt"
 	"log"
 	"os"
 	"os/signal"
@@ -33,7 +33,6 @@ func Run(db *sql.DB, pageSize int, watch, fromstart, verbose bool) {
 	} else {
 		log.Printf("[INFO] No existing index, starting (re)sync")
 	}
-fetchLoop:
 	for {
 		resp, err := cli.Delegations(&flters, &pagination)
 		if err != nil {
@@ -46,7 +45,7 @@ fetchLoop:
 
 		if !watch && (!resp.HasMore || resp.Items == nil) {
 			// If no more items needs to be fetched and importer is not in watch mode, exiting
-			break fetchLoop
+			break
 		} else if !resp.HasMore {
 			if verbose {
 				log.Printf("[INFO] Last events saved, waiting for update polling\n")
@@ -64,7 +63,6 @@ fetchLoop:
 		select {
 		case <-stop:
 			cancel()
-			break fetchLoop
 		default:
 
 		}
@@ -82,35 +80,41 @@ func getLastID(db *sql.DB) *int64 {
 }
 
 func saveDelegations(db *sql.DB, ctx context.Context, delegation *tzkt.DelegationItems, verbose bool) error {
-
-	ids := make([]int64, len(delegation.Items))
-	timestamps := make([]time.Time, len(delegation.Items))
-	amounts := make([]int64, len(delegation.Items))
-	delegators := make([]string, len(delegation.Items))
-	block_hashes := make([]string, len(delegation.Items))
-	block_heights := make([]int, len(delegation.Items))
-	for i, row := range delegation.Items {
-		ids[i] = row.ID
-		timestamps[i] = row.Timestamp
-		amounts[i] = row.Amount
-		delegators[i] = row.Sender.Address
-		block_hashes[i] = row.Block
-		block_heights[i] = row.Level
+	datas := toBulkInsert(delegation)
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Printf("[ERROR] Failed to begin db transaction : %s\n", err)
+		return err
 	}
-
-	rr, err := db.ExecContext(ctx, `
-		INSERT INTO delegations
-		(id, timestamp, amount, delegator, block_hash, block_level)
-		(SELECT  * FROM UNNEST($1::bigint[], $2::timestamp[], $3::bigint[], $4::varchar[], $5::text[], $6::bigint[]))
-		ON CONFLICT (id) DO UPDATE SET delegator = EXCLUDED.delegator
-		`, ids, timestamps, amounts, delegators, block_hashes, block_heights)
+	rr, err := tx.ExecContext(ctx, `
+		INSERT INTO delegators (address, first_seen) 
+		(SELECT * FROM UNNEST($1::varchar[], $2::timestamp[]))
+		ON CONFLICT (address) DO NOTHING;`, datas.delegators, datas.timestamps)
 	if err != nil {
 		log.Printf("[ERROR] Failed to save : %s\n", err)
 		return err
 	}
 	cnt, _ := rr.RowsAffected()
 	if verbose {
+		log.Printf("[INFO] %d delegators saved", cnt)
+	}
+	rr, err = tx.ExecContext(ctx, `
+		INSERT INTO delegations
+		(id, timestamp, amount, delegator, block_hash, block_level)
+		(SELECT  * FROM UNNEST($1::bigint[], $2::timestamp[], $3::bigint[], $4::varchar[], $5::text[], $6::bigint[]))
+		ON CONFLICT (id) DO UPDATE SET delegator = EXCLUDED.delegator, amount = EXCLUDED.amount;
+		`, datas.ids, datas.timestamps, datas.amounts, datas.delegators, datas.block_hashes, datas.block_heights)
+	if err != nil {
+		log.Printf("[ERROR] Failed to save : %s\n", err)
+		return err
+	}
+	cnt, _ = rr.RowsAffected()
+	if verbose {
 		log.Printf("[INFO] %d delegations saved", cnt)
+	}
+	if err = tx.Commit(); err != nil {
+		log.Printf("[ERROR] Failed to commit tx : %s\n", err)
+		return err
 	}
 	return nil
 }

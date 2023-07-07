@@ -1,9 +1,9 @@
 package main
 
 import (
-	"delegationz/pkg/services/api"
-	"delegationz/pkg/services/db"
-	"delegationz/pkg/services/importer"
+	"delegationz/pkg/api"
+	"delegationz/pkg/db"
+	"delegationz/pkg/importer"
 	"log"
 	"os"
 )
@@ -20,6 +20,9 @@ func dbURL() string {
 
 func main() {
 	log.Printf("[INFO] Starting %s v%s", appName, api.VERSION)
-	dbclient := db.Get(dbURL())
-	importer.Run(dbclient, 800, false, true, true)
+	if err := db.Init(dbURL()); err != nil {
+		log.Printf("[ERROR] Failed to connect to db : %s\n", err)
+		os.Exit(1)
+	}
+	importer.Run(db.Get(), 800, false, true, true)
 }

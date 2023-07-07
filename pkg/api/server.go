@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"delegationz/pkg/services/frontend"
+	"delegationz/pkg/frontend"
 	"log"
 	"os"
 	"strings"
@@ -55,10 +55,17 @@ func Serve(port string, withfrontend bool, dbClient *sql.DB) error {
 	srv.GET("/health", HealthHandler)
 	srv.GET("/xtz/sync", SyncHandler(dbClient))
 	srv.GET("/xtz/delegations", DelegationsHandler(dbClient))
+	srv.GET("/xtz/delegators/stats", DelegatorsStatsHandler(dbClient))
+	srv.GET("/xtz/delegators", DelegatorsHandler(dbClient))
+
 	if withfrontend {
 		log.Printf("[INFO] Serving SPA frontend for default route")
+		files, err := frontend.BuildHTTPFS()
+		if err != nil {
+			return err
+		}
 		srv.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-			Filesystem: frontend.BuildHTTPFS(),
+			Filesystem: files,
 			HTML5:      true,
 			Skipper: func(c echo.Context) bool {
 				return strings.HasPrefix(c.Request().URL.Path, "/__")

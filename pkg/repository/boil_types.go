@@ -50,3 +50,39 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	strmangle.PutBuffer(buf)
 	return str
 }
+
+type StatKind string
+
+// Enum values for StatKind
+const (
+	StatKindTOP10VALIDATORS  StatKind = "TOP10VALIDATORS"
+	StatKindTOP100VALIDATORS StatKind = "TOP100VALIDATORS"
+	StatKindDAILYVOLUME      StatKind = "DAILYVOLUME"
+	StatKindWEEKLYVOLUME     StatKind = "WEEKLYVOLUME"
+	StatKindMONTHLYVOLUME    StatKind = "MONTHLYVOLUME"
+	StatKindYEARLYVOLUME     StatKind = "YEARLYVOLUME"
+)
+
+func AllStatKind() []StatKind {
+	return []StatKind{
+		StatKindTOP10VALIDATORS,
+		StatKindTOP100VALIDATORS,
+		StatKindDAILYVOLUME,
+		StatKindWEEKLYVOLUME,
+		StatKindMONTHLYVOLUME,
+		StatKindYEARLYVOLUME,
+	}
+}
+
+func (e StatKind) IsValid() error {
+	switch e {
+	case StatKindTOP10VALIDATORS, StatKindTOP100VALIDATORS, StatKindDAILYVOLUME, StatKindWEEKLYVOLUME, StatKindMONTHLYVOLUME, StatKindYEARLYVOLUME:
+		return nil
+	default:
+		return errors.New("enum is not valid")
+	}
+}
+
+func (e StatKind) String() string {
+	return string(e)
+}

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"delegationz/pkg/services/tzkt"
+	"delegationz/pkg/tzkt"
 	"fmt"
 	"testing"
 	"time"

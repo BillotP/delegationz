@@ -3,7 +3,7 @@ package importer
 import (
 	"context"
 	"database/sql"
-	"delegationz/pkg/services/tzkt"
+	"delegationz/pkg/tzkt"
 	"log"
 	"os"
 	"os/signal"
@@ -93,37 +93,7 @@ func saveDelegationsAsync(db *sql.DB, ctx context.Context, delegationChannel <-c
 				// Channel closed, no more delegations to process
 				return
 			}
-			go func() {
-				ids := make([]int64, len(delegation.Items))
-				timestamps := make([]time.Time, len(delegation.Items))
-				amounts := make([]int64, len(delegation.Items))
-				delegators := make([]string, len(delegation.Items))
-				block_hashes := make([]string, len(delegation.Items))
-				block_heights := make([]int, len(delegation.Items))
-				for i, row := range delegation.Items {
-					ids[i] = row.ID
-					timestamps[i] = row.Timestamp
-					amounts[i] = row.Amount
-					delegators[i] = row.Sender.Address
-					block_hashes[i] = row.Block
-					block_heights[i] = row.Level
-				}
-
-				rr, err := db.ExecContext(ctx, `
-					INSERT INTO delegations
-					(id, timestamp, amount, delegator, block_hash, block_level)
-					(SELECT  * FROM UNNEST($1::bigint[], $2::timestamp[], $3::bigint[], $4::varchar[], $5::text[], $6::bigint[]))
-					ON CONFLICT (id) DO UPDATE SET delegator = EXCLUDED.delegator
-					`, ids, timestamps, amounts, delegators, block_hashes, block_heights)
-				if err != nil {
-					log.Printf("[ERROR] Failed to save : %s\n", err)
-					return
-				}
-				cnt, _ := rr.RowsAffected()
-				if verbose {
-					log.Printf("[INFO] %d delegations saved", cnt)
-				}
-			}()
+			go saveDelegations(db, ctx, delegation, verbose)
 		}
 
 	}

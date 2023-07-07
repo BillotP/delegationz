@@ -1,7 +1,7 @@
 package api
 
 import (
-	"delegationz/pkg/services/tzkt"
+	"delegationz/pkg/tzkt"
 	"fmt"
 	"time"
 )
@@ -13,8 +13,8 @@ type DelegationItem struct {
 	Block     string    `json:"block"`
 }
 
-type DelegationsResponse struct {
-	Data []DelegationItem `json:"data"`
+type ItemsResponse struct {
+	Data interface{} `json:"data"`
 }
 
 type ByTimestamp []DelegationItem

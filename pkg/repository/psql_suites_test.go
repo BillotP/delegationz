@@ -7,4 +7,8 @@ import "testing"
 
 func TestUpsert(t *testing.T) {
 	t.Run("Delegations", testDelegationsUpsert)
+
+	t.Run("DelegationsStats", testDelegationsStatsUpsert)
+
+	t.Run("Delegators", testDelegatorsUpsert)
 }

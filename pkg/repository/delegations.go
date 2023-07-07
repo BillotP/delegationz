@@ -153,15 +153,26 @@ var DelegationWhere = struct {
 
 // DelegationRels is where relationship names are stored.
 var DelegationRels = struct {
-}{}
+	DelegationDelegator string
+}{
+	DelegationDelegator: "DelegationDelegator",
+}
 
 // delegationR is where relationships are stored.
 type delegationR struct {
+	DelegationDelegator *Delegator `boil:"DelegationDelegator" json:"DelegationDelegator" toml:"DelegationDelegator" yaml:"DelegationDelegator"`
 }
 
 // NewStruct creates a new relationship struct
 func (*delegationR) NewStruct() *delegationR {
 	return &delegationR{}
+}
+
+func (r *delegationR) GetDelegationDelegator() *Delegator {
+	if r == nil {
+		return nil
+	}
+	return r.DelegationDelegator
 }
 
 // delegationL is where Load methods for each relationship are stored.
@@ -451,6 +462,184 @@ func (q delegationQuery) Exists(ctx context.Context, exec boil.ContextExecutor) 
 	}
 
 	return count > 0, nil
+}
+
+// DelegationDelegator pointed to by the foreign key.
+func (o *Delegation) DelegationDelegator(mods ...qm.QueryMod) delegatorQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"address\" = ?", o.Delegator),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return Delegators(queryMods...)
+}
+
+// LoadDelegationDelegator allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (delegationL) LoadDelegationDelegator(ctx context.Context, e boil.ContextExecutor, singular bool, maybeDelegation interface{}, mods queries.Applicator) error {
+	var slice []*Delegation
+	var object *Delegation
+
+	if singular {
+		var ok bool
+		object, ok = maybeDelegation.(*Delegation)
+		if !ok {
+			object = new(Delegation)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeDelegation)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeDelegation))
+			}
+		}
+	} else {
+		s, ok := maybeDelegation.(*[]*Delegation)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeDelegation)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeDelegation))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &delegationR{}
+		}
+		args = append(args, object.Delegator)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &delegationR{}
+			}
+
+			for _, a := range args {
+				if a == obj.Delegator {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.Delegator)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`delegators`),
+		qm.WhereIn(`delegators.address in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Delegator")
+	}
+
+	var resultSlice []*Delegator
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Delegator")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for delegators")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for delegators")
+	}
+
+	if len(delegatorAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.DelegationDelegator = foreign
+		if foreign.R == nil {
+			foreign.R = &delegatorR{}
+		}
+		foreign.R.Delegations = append(foreign.R.Delegations, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.Delegator == foreign.Address {
+				local.R.DelegationDelegator = foreign
+				if foreign.R == nil {
+					foreign.R = &delegatorR{}
+				}
+				foreign.R.Delegations = append(foreign.R.Delegations, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetDelegationDelegator of the delegation to the related item.
+// Sets o.R.DelegationDelegator to related.
+// Adds o to related.R.Delegations.
+func (o *Delegation) SetDelegationDelegator(ctx context.Context, exec boil.ContextExecutor, insert bool, related *Delegator) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"delegations\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"delegator"}),
+		strmangle.WhereClause("\"", "\"", 2, delegationPrimaryKeyColumns),
+	)
+	values := []interface{}{related.Address, o.ID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.Delegator = related.Address
+	if o.R == nil {
+		o.R = &delegationR{
+			DelegationDelegator: related,
+		}
+	} else {
+		o.R.DelegationDelegator = related
+	}
+
+	if related.R == nil {
+		related.R = &delegatorR{
+			Delegations: DelegationSlice{o},
+		}
+	} else {
+		related.R.Delegations = append(related.R.Delegations, o)
+	}
+
+	return nil
 }
 
 // Delegations retrieves all the records using an executor.
